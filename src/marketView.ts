@@ -89,12 +89,13 @@ export class MarketView extends ItemView {
 	}
 
 	private renderNodeStatus(ok: boolean): void {
+		// 只显示通用加速状态，不暴露具体加速节点
 		this.nodeStatusEl.empty();
 		this.nodeStatusEl.createSpan({
 			cls: "pmcn-node-dot" + (ok ? " is-ok" : ""),
 		});
 		this.nodeStatusEl.createSpan({
-			text: `节点：${this.plugin.currentBaseLabel()}`,
+			text: ok ? "加速已连接" : "连接加速线路…",
 		});
 	}
 

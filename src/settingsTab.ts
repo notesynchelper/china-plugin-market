@@ -15,15 +15,15 @@ export class PluginMarketSettingTab extends PluginSettingTab {
 		containerEl.empty();
 		containerEl.createEl("h2", { text: "插件加速商店" });
 
-		// 当前节点 + 重新测速
+		// 加速线路（不显示具体节点）+ 重新测速
 		new Setting(containerEl)
-			.setName("加速节点")
-			.setDesc(`当前：${this.plugin.currentBaseLabel()}`)
+			.setName("加速线路")
+			.setDesc("自动选择最快加速线路")
 			.addButton((btn) =>
 				btn.setButtonText("重新测速").onClick(async () => {
 					btn.setDisabled(true);
-					const base = await this.plugin.reprobeNodes();
-					new Notice(`已选节点：${base}`);
+					await this.plugin.reprobeNodes();
+					new Notice("已重新测速，已切换到最快线路");
 					btn.setDisabled(false);
 					this.display();
 				})
