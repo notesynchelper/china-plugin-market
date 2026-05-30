@@ -1,0 +1,145 @@
+/* 插件加速商店 — 商店视图样式（仿 Obsidian 原生社区插件浏览器） */
+
+.pmcn-view {
+	padding: 0 16px 16px;
+	overflow-y: auto;
+	height: 100%;
+}
+
+.pmcn-toolbar {
+	position: sticky;
+	top: 0;
+	z-index: 5;
+	background: var(--background-primary);
+	padding: 12px 0 8px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.pmcn-toolbar-row {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+.pmcn-search {
+	flex: 1 1 200px;
+}
+
+.pmcn-tabs {
+	display: flex;
+	gap: 4px;
+	flex-wrap: wrap;
+}
+
+.pmcn-tab {
+	padding: 4px 10px;
+	border-radius: var(--radius-s);
+	cursor: pointer;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.pmcn-tab.is-active {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+	font-weight: var(--font-semibold);
+}
+
+.pmcn-node-status {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.pmcn-node-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--text-faint);
+	display: inline-block;
+}
+
+.pmcn-node-dot.is-ok {
+	background: var(--color-green);
+}
+
+.pmcn-list {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+	gap: 12px;
+	margin-top: 8px;
+}
+
+.pmcn-card {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	padding: 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	background: var(--background-secondary);
+}
+
+.pmcn-card-title {
+	font-weight: var(--font-semibold);
+	font-size: var(--font-ui-medium);
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.pmcn-badge {
+	font-size: var(--font-ui-smaller);
+	padding: 0 6px;
+	border-radius: var(--radius-s);
+	background: var(--background-modifier-border);
+	color: var(--text-muted);
+}
+
+.pmcn-badge.is-special {
+	background: var(--color-purple);
+	color: var(--text-on-accent);
+}
+
+.pmcn-badge.is-deprecated {
+	background: var(--color-orange);
+	color: var(--text-on-accent);
+}
+
+.pmcn-card-author {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.pmcn-card-desc {
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+	flex: 1;
+	display: -webkit-box;
+	-webkit-line-clamp: 3;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.pmcn-card-footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-top: 4px;
+}
+
+.pmcn-downloads {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.pmcn-empty {
+	text-align: center;
+	color: var(--text-muted);
+	padding: 40px 0;
+}

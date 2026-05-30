@@ -1,0 +1,33 @@
+{
+	"name": "obsidian-plugin-market",
+	"version": "0.1.0",
+	"description": "插件加速商店 — 国内加速的 Obsidian 社区插件商店",
+	"main": "main.js",
+	"scripts": {
+		"dev": "node esbuild.config.mjs",
+		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"typecheck": "tsc -noEmit -skipLibCheck",
+		"test": "jest",
+		"test:watch": "jest --watch"
+	},
+	"keywords": [
+		"obsidian",
+		"plugin",
+		"marketplace",
+		"china",
+		"mirror"
+	],
+	"author": "NoteHelper Team",
+	"license": "MIT",
+	"devDependencies": {
+		"@types/jest": "^29.5.0",
+		"@types/node": "^20.0.0",
+		"builtin-modules": "3.3.0",
+		"esbuild": "0.17.3",
+		"jest": "^29.5.0",
+		"obsidian": "^1.4.11",
+		"ts-jest": "^29.1.0",
+		"tslib": "2.6.2",
+		"typescript": "^5.4.0"
+	}
+}
