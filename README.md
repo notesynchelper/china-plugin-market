@@ -1,4 +1,4 @@
-# 插件加速商店 (china-plugin-market)
+# China Speedup (china-speedup)
 
 面向中国大陆 Obsidian 用户的**加速版插件商店**。在 Obsidian 内浏览、搜索、一键安装社区插件，
 插件清单与安装包都经国内中转节点（relay）加速，自动选择最快线路；无需翻墙、不再卡在
@@ -36,7 +36,7 @@ relay-1..5 (nginx)
 ## 安装（手动）
 
 下载 release 里的 `main.js` / `manifest.json` / `styles.css` 放到 vault 的
-`.obsidian/plugins/china-plugin-market/`，重启 Obsidian 并在「第三方插件」里启用。
+`.obsidian/plugins/china-speedup/`，重启 Obsidian 并在「第三方插件」里启用。
 
 ## 开发
 
