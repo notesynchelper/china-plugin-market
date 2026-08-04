@@ -209,17 +209,64 @@ export class PluginUpdater {
 	}
 }
 
-/** semver 比较：latest 是否比 current 新 */
-export const isNewerVersion = (latest: string, current: string): boolean => {
-	const parse = (v: string) =>
-		v.split(/[.\-+]/).map((n) => parseInt(n, 10) || 0);
-	const L = parse(latest);
-	const C = parse(current);
-	for (let i = 0; i < Math.max(L.length, C.length); i++) {
-		const l = L[i] || 0;
-		const c = C[i] || 0;
-		if (l > c) return true;
-		if (l < c) return false;
+/**
+ * semver 比较：latest 是否比 current 新。
+ *
+ * 按 semver 优先级处理 **预发布号**：`1.0.0-beta.1` < `1.0.0`。
+ * 旧实现把 `-beta.1` 当成第 4、5 段数字，于是 `1.0.0-beta.1` 会被判成比
+ * `1.0.0` 新 —— 在「更新已安装插件」里就是把用户从正式版推去装 beta（降级）。
+ */
+export const isNewerVersion = (latest: string, current: string): boolean =>
+	compareVersions(latest, current) > 0;
+
+interface ParsedVersion {
+	core: number[];
+	/** 预发布标识符；空数组 = 正式版（正式版 > 任何预发布） */
+	pre: string[];
+}
+
+const parseVersion = (v: string): ParsedVersion => {
+	// 去掉前缀 v 和 build metadata（+xxx 不参与优先级比较）
+	const clean = String(v ?? "").trim().replace(/^v/i, "").split("+")[0];
+	const dash = clean.indexOf("-");
+	const coreStr = dash === -1 ? clean : clean.slice(0, dash);
+	const preStr = dash === -1 ? "" : clean.slice(dash + 1);
+	return {
+		core: coreStr.split(".").map((n) => parseInt(n, 10) || 0),
+		pre: preStr ? preStr.split(".") : [],
+	};
+};
+
+/** a>b → 1；a<b → -1；相等 → 0 */
+export const compareVersions = (a: string, b: string): number => {
+	const A = parseVersion(a);
+	const B = parseVersion(b);
+	for (let i = 0; i < Math.max(A.core.length, B.core.length); i++) {
+		const x = A.core[i] || 0;
+		const y = B.core[i] || 0;
+		if (x !== y) return x > y ? 1 : -1;
 	}
-	return false;
+	// 主版本相同：有预发布号的更旧（1.0.0-beta < 1.0.0）
+	if (A.pre.length === 0 && B.pre.length === 0) return 0;
+	if (A.pre.length === 0) return 1;
+	if (B.pre.length === 0) return -1;
+	for (let i = 0; i < Math.max(A.pre.length, B.pre.length); i++) {
+		const x = A.pre[i];
+		const y = B.pre[i];
+		// 标识符少的更旧（beta < beta.1）
+		if (x === undefined) return -1;
+		if (y === undefined) return 1;
+		const nx = /^\d+$/.test(x) ? parseInt(x, 10) : null;
+		const ny = /^\d+$/.test(y) ? parseInt(y, 10) : null;
+		if (nx !== null && ny !== null) {
+			if (nx !== ny) return nx > ny ? 1 : -1;
+		} else if (nx !== null) {
+			return -1; // 纯数字标识符优先级低于字母数字
+		} else if (ny !== null) {
+			return 1;
+		} else if (x !== y) {
+			return x > y ? 1 : -1;
+		}
+	}
+	return 0;
 };

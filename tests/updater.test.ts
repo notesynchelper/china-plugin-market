@@ -75,6 +75,20 @@ describe("isNewerVersion", () => {
 		expect(isNewerVersion("2.0.0", "1.9.9")).toBe(true);
 		expect(isNewerVersion("1.0.0", "1.0.0")).toBe(false);
 	});
+
+	it("预发布号按 semver 优先级：1.0.0-beta.1 < 1.0.0", () => {
+		expect(isNewerVersion("1.0.0-beta.1", "1.0.0")).toBe(false);
+		expect(isNewerVersion("1.0.0", "1.0.0-beta.1")).toBe(true);
+		expect(isNewerVersion("1.0.0-beta.2", "1.0.0-beta.1")).toBe(true);
+		expect(isNewerVersion("1.0.0-beta", "1.0.0-beta.1")).toBe(false);
+		expect(isNewerVersion("1.0.0-rc.1", "1.0.0-beta.9")).toBe(true);
+		expect(isNewerVersion("1.0.1-beta.1", "1.0.0")).toBe(true);
+	});
+
+	it("v 前缀与 build metadata 不影响比较", () => {
+		expect(isNewerVersion("v1.2.0", "1.1.0")).toBe(true);
+		expect(isNewerVersion("1.0.0+build.9", "1.0.0")).toBe(false);
+	});
 });
 
 const makeAdapter = () => {

@@ -21,6 +21,9 @@ export function requestUrl(): Promise<RequestUrlResponse> {
 	});
 }
 
+/** 真实 Obsidian 导出的当前版本号（如 '1.7.2'） */
+export const apiVersion = "1.7.2";
+
 export function normalizePath(path: string): string {
 	return path.replace(/\\/g, "/").replace(/\/+/g, "/");
 }

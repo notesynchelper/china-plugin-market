@@ -15,6 +15,7 @@
  */
 
 import { log } from "./logger";
+import { compareVersions } from "./updater";
 import type { MarketEntry, ObsidianManifest, InstalledState } from "./types";
 
 export interface InstallerNet {
@@ -42,6 +43,40 @@ export interface InstallContext {
 	plugins: PluginsApi;
 	/** 通常是 app.vault.configDir，默认 '.obsidian' */
 	configDir: string;
+}
+
+export interface InstallOptions {
+	/**
+	 * 写盘后是否启用插件。默认 true（首次安装）。
+	 * 更新一个**当前被用户停用**的插件时传 false —— 更新不该顺手把它打开，
+	 * 那是替用户改配置。
+	 */
+	enable?: boolean;
+	/**
+	 * 🔴 更新闸：下载到的版本必须**严格新于**这个版本，否则中止、不写盘。
+	 *
+	 * 「更新」点下去却装了同一个版本（某条线路的 HEAD 缓存滞后），却弹「已更新至
+	 * vX」并计入成功数 —— 那是骗用户。update 模式传已装版本，reinstall 用
+	 * notOlderThan（允许等值重装）。
+	 */
+	mustBeNewerThan?: string;
+	/**
+	 * 🔴 防降级闸：下载到的版本若比这个旧，直接中止、不写盘。
+	 *
+	 * 版本是**按线路各自解析**的（每条 base 读自己的 HEAD manifest）：线路 A 说
+	 * 有 2.0.0、但它的 /gh/release 挂了落到线路 B，而 B 的缓存还停在 1.x —— 
+	 * 没有这道闸就会把用户已装的新版**悄悄降级**。更新/重装时传已装版本。
+	 */
+	notOlderThan?: string;
+	/** 当前是否移动端（Platform.isMobile）；给了才拦 isDesktopOnly 的新版 */
+	isMobile?: boolean;
+	/**
+	 * 🔴 兼容性闸：下载到的 manifest 若要求比这个更高的 Obsidian，中止、不写盘。
+	 *
+	 * 检查阶段已经滤过一轮，但两者之间可能变（换线路拿到别的 manifest / 上游刚发新版），
+	 * 而写盘是**不可逆**的：覆盖后旧的可用版本就没了。落地前必须再验一次。
+	 */
+	appVersion?: string;
 }
 
 const RELEASE_FILES = {
@@ -89,6 +124,17 @@ export class InstallAbortError extends Error {
 	}
 }
 
+/**
+ * 这条线路给的版本不满足「必须更新」要求（多半是它的 HEAD 缓存滞后）。
+ * 属于**可换线路重试**的失败：别的线路可能就有新版。
+ */
+export class StaleVersionError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = "StaleVersionError";
+	}
+}
+
 /** 所有候选线路的下载都失败（区别于「id 不匹配」「写盘失败」，只有它代表线路问题） */
 export class AllBasesFailedError extends Error {
 	readonly lastError: unknown;
@@ -115,7 +161,8 @@ export interface InstallPayload {
 export const fetchInstallPayload = async (
 	entry: MarketEntry,
 	base: string,
-	net: InstallerNet
+	net: InstallerNet,
+	opts: InstallOptions = {}
 ): Promise<InstallPayload> => {
 	let manifestUrl: string;
 	let mainUrl: string;
@@ -168,14 +215,36 @@ export const fetchInstallPayload = async (
 			`插件 id 不匹配：期望 ${entry.id}，实际 ${manifest.id}（拒绝安装）`
 		);
 	}
+	// 没有版本号的 manifest 不能写盘：写进去会顶掉能用的版本，还会显示成 vundefined
+	if (typeof manifest.version !== "string" || !manifest.version) {
+		throw new Error(`插件 ${entry.id} 的 release manifest 缺 version`);
+	}
 
-	// 2) main.js（必需，非空）
+	// 2) 版本闸提前到下载阶段：这条线路缓存滞后就换下一条，而不是整单放弃
+	if (
+		opts.mustBeNewerThan &&
+		compareVersions(manifest.version, opts.mustBeNewerThan) <= 0
+	) {
+		throw new StaleVersionError(
+			`加速线路上仍是 v${manifest.version}（与已安装相同或更旧），暂无可用更新，请稍后重试`
+		);
+	}
+	if (
+		opts.notOlderThan &&
+		compareVersions(manifest.version, opts.notOlderThan) < 0
+	) {
+		throw new StaleVersionError(
+			`下载到的版本 v${manifest.version} 比已安装的 v${opts.notOlderThan} 旧，已取消（避免降级）`
+		);
+	}
+
+	// 3) main.js（必需，非空）
 	const mainText = await fetchTextOk(net, mainUrl);
 	if (!mainText || mainText.length < 100) {
 		throw new Error(`插件 ${entry.id} 的 main.js 异常（过小/为空）`);
 	}
 
-	// 3) styles.css（可缺）
+	// 4) styles.css（可缺）
 	let stylesText: string | null = null;
 	try {
 		stylesText = await fetchTextOk(net, stylesUrl);
@@ -193,10 +262,60 @@ export const fetchInstallPayload = async (
 export const applyInstallPayload = async (
 	entry: MarketEntry,
 	payload: InstallPayload,
-	ctx: InstallContext
+	ctx: InstallContext,
+	opts: InstallOptions = {}
 ): Promise<string> => {
 	const { fs, plugins, configDir } = ctx;
 	const { manifestText, manifest, mainText, stylesText } = payload;
+	const enable = opts.enable !== false;
+
+	// 防降级：宁可这次不更新，也不能把用户已有的新版本换成旧的。
+	// ⚠️ 用**此刻**磁盘/内存里的版本重判一次：下载这几秒里别的更新路径可能已经把
+	// 它推到更高版本了，只信下载前抓的快照会让那次升级被悄悄回滚。
+	const floorNow = [
+		opts.notOlderThan,
+		opts.mustBeNewerThan,
+		plugins.manifests[entry.id]?.version,
+	]
+		.filter((v): v is string => !!v)
+		.sort((a, b) => compareVersions(b, a))[0];
+	if (
+		floorNow &&
+		manifest.version &&
+		compareVersions(manifest.version, floorNow) < 0
+	) {
+		throw new InstallAbortError(
+			`下载到的版本 v${manifest.version} 比已安装的 v${floorNow} 旧，已取消（避免降级）`
+		);
+	}
+
+	// 更新必须真的更新：拿到同版本就别假装成功
+	if (
+		opts.mustBeNewerThan &&
+		manifest.version &&
+		compareVersions(manifest.version, opts.mustBeNewerThan) <= 0
+	) {
+		throw new InstallAbortError(
+			`加速线路上仍是 v${manifest.version}（与已安装相同或更旧），暂无可用更新，请稍后重试`
+		);
+	}
+
+	// 移动端装不了 desktop-only 的新版：装上去 = 把能用的插件换成加载不了的
+	if (opts.isMobile && manifest.isDesktopOnly === true) {
+		throw new InstallAbortError("该版本仅支持桌面端，手机端已取消安装");
+	}
+
+	// 兼容性：写盘不可逆，覆盖前必须确认新版跑得起来
+	if (
+		opts.appVersion &&
+		typeof manifest.minAppVersion === "string" &&
+		manifest.minAppVersion &&
+		compareVersions(manifest.minAppVersion, opts.appVersion) > 0
+	) {
+		throw new InstallAbortError(
+			`该版本需要 Obsidian ${manifest.minAppVersion} 或更高（当前 ${opts.appVersion}），已取消`
+		);
+	}
 
 	// 4) 写盘
 	const folder = pluginFolder(configDir, entry.id);
@@ -209,9 +328,11 @@ export const applyInstallPayload = async (
 		await fs.write(`${folder}/${RELEASE_FILES.styles}`, stylesText);
 	}
 
-	// 5) 加载并启用
+	// 5) 加载并（按需）启用
 	await plugins.loadManifests();
-	if (plugins.plugins[entry.id] || plugins.enabledPlugins.has(entry.id)) {
+	const wasRunning =
+		!!plugins.plugins[entry.id] || plugins.enabledPlugins.has(entry.id);
+	if (wasRunning && enable) {
 		// 已加载/启用过 → 先停再启，确保新代码生效
 		try {
 			await plugins.disablePlugin(entry.id);
@@ -219,13 +340,16 @@ export const applyInstallPayload = async (
 			/* ignore */
 		}
 	}
-	await plugins.enablePluginAndSave(entry.id);
+	if (enable) {
+		await plugins.enablePluginAndSave(entry.id);
+	}
 
 	log(
 		"✅ 安装完成:",
 		entry.id,
 		manifest.version,
-		payload.direct ? "(direct)" : "(repo)"
+		payload.direct ? "(direct)" : "(repo)",
+		enable ? "(enabled)" : "(kept disabled)"
 	);
 	return manifest.version;
 };
@@ -240,7 +364,8 @@ export const applyInstallPayload = async (
 export const installEntry = async (
 	entry: MarketEntry,
 	base: string | readonly string[],
-	ctx: InstallContext
+	ctx: InstallContext,
+	opts: InstallOptions = {}
 ): Promise<string> => {
 	const all = typeof base === "string" ? [base] : [...base];
 	if (all.length === 0) throw new InstallAbortError("没有可用的加速线路");
@@ -256,7 +381,7 @@ export const installEntry = async (
 	let lastErr: unknown = null;
 	for (const b of bases) {
 		try {
-			payload = await fetchInstallPayload(entry, b, ctx.net);
+			payload = await fetchInstallPayload(entry, b, ctx.net, opts);
 			break;
 		} catch (e) {
 			if (e instanceof InstallAbortError) throw e;
@@ -265,13 +390,17 @@ export const installEntry = async (
 		}
 	}
 	if (!payload) {
+		// 全部线路都只有旧版本 —— 这不是「线路挂了」，别说成网络问题
+		if (lastErr instanceof StaleVersionError) {
+			throw new InstallAbortError(lastErr.message);
+		}
 		const detail = lastErr instanceof Error ? lastErr.message : String(lastErr);
 		throw new AllBasesFailedError(
 			`插件 ${entry.id} 在所有加速线路上都下载失败：${detail}`,
 			lastErr
 		);
 	}
-	return applyInstallPayload(entry, payload, ctx);
+	return applyInstallPayload(entry, payload, ctx, opts);
 };
 
 /** GET 文本，非 200 抛错 */

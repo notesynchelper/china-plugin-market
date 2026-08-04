@@ -1,4 +1,4 @@
-export { PluginUpdater, isNewerVersion } from "./PluginUpdater";
+export { PluginUpdater, isNewerVersion, compareVersions } from "./PluginUpdater";
 export type { UpdaterDeps, UpdaterAdapter } from "./PluginUpdater";
 export type { VersionInfo, UpdateCheckResult, UpdateResult } from "./types";
 export {

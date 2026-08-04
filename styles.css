@@ -78,6 +78,10 @@ input[type="text"].pmcn-input-invalid:active {
 	background: var(--color-green);
 }
 
+.pmcn-node-dot.is-fail {
+	background: var(--color-red);
+}
+
 .pmcn-list {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -121,6 +125,11 @@ input[type="text"].pmcn-input-invalid:active {
 	color: var(--text-on-accent);
 }
 
+.pmcn-badge.is-update {
+	background: var(--color-green);
+	color: var(--text-on-accent);
+}
+
 .pmcn-card-author {
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
@@ -144,6 +153,22 @@ input[type="text"].pmcn-input-invalid:active {
 }
 
 .pmcn-downloads {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+/* 已安装卡片的版本行：已装 vX（→ 新版 vY） */
+.pmcn-card-state {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+/* 「已安装」tab 专属操作条：检查更新 / 全部更新 / 状态文案 */
+.pmcn-update-bar.is-hidden {
+	display: none;
+}
+
+.pmcn-update-status {
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
 }

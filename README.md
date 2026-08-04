@@ -14,6 +14,13 @@
   `marketplace-config.json` 注入「特殊导入」。两者均可热更新，无需发新版本。
 - **官网调起安装**：注册 `obsidian://plugin-market-cn` 协议，官网（产品自有白名单域）可一键
   打开商店并定位/安装插件；调起安装源**只接产品自有域**，防止任意网站推送恶意安装。
+- **更新已安装插件**：「已安装」标签页里查各插件最新版本（与安装取版本走同一条路），标出
+  「可更新 vX → vY」，支持逐个更新或一键全部更新。四道闸：
+  - **不改启用状态**：停用中的插件更新/重装后仍停用，不替用户打开；
+  - **不降级**：换线路后拿到比已装更旧的版本直接中止（各线路各自解析 HEAD 版本，缓存可能滞后）；
+  - **不装不兼容版本**：新版 `minAppVersion` 高于当前 Obsidian 时不提示更新，卡片如实写明原因；
+  - **不误报**：查不到版本就标「未能获取最新版」，绝不并进「已是最新」；插件卸载或被别的途径
+    升级后，缓存结论立即作废。
 - **插件自更新**：临时文件下载 → 校验 → 原子替换，主线路走 relay、回退 GitHub Release。
 
 ## 架构
@@ -25,6 +32,7 @@
   ├ registry       合并 官方清单(−黑名单) + 特殊导入
   ├ installer      BRAT 式下载→写 .obsidian/plugins/<id>/→启用
   ├ deeplink       协议 handler + 白名单 host 校验
+  ├ updateChecker  已安装插件的版本检查（并发受限 + 30min 缓存）
   └ updater        自更新
         │
 relay-1..5 (nginx)
@@ -46,6 +54,14 @@ npm run typecheck   # tsc --noEmit
 npm run lint        # eslint（与 Obsidian 官方插件审查同款 eslint-plugin-obsidianmd）
 npm test            # jest
 npm run build       # 产出 main.js
+```
+
+真机 E2E（Xvfb + 真 Obsidian，需先 `npm run build`；走线上 relay 真实下载）：
+
+```bash
+node tests/real-obsidian/run-e2e.js          --display=110   # 开商店 + 真实安装
+node tests/real-obsidian/run-e2e-deeplink.js --display=111   # obsidian:// 调起安装
+node tests/real-obsidian/run-e2e-update.js   --display=112   # 更新已安装插件（含「停用中的插件更新后仍停用」不变式）
 ```
 
 要求 Obsidian ≥ 1.7.2（`manifest.json#minAppVersion`）。

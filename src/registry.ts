@@ -153,6 +153,12 @@ export interface CatalogResult {
 	entries: MarketEntry[];
 	config: MarketplaceConfig;
 	base: string;
+	/**
+	 * 官方 community-plugins.json 是否真的取到了。
+	 * 取不到时 entries 可能仍非空（只剩特殊导入），调用方**不能**把「非空」
+	 * 当成「清单健康」——那会把网络故障误报成「没有插件需要处理」。
+	 */
+	officialOk: boolean;
 }
 
 const FALLBACK_CONFIG: MarketplaceConfig = {
@@ -288,6 +294,7 @@ export class Registry {
 			entries,
 			config,
 			base: bases[0],
+			officialOk: Array.isArray(official) && official.length > 0,
 		};
 		this.cache = result;
 		this.cachedAt = now;
