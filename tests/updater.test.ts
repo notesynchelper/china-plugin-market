@@ -4,6 +4,70 @@ import {
 	type UpdaterDeps,
 } from "../src/updater/PluginUpdater";
 
+/**
+ * 回归守卫：制品里只有 version.json 是 JSON，main.js / styles.css 都不是。
+ * requestText 对非 JSON 正文只能把 json 记为 null（见 src/obsidianNet.ts），
+ * performUpdate 必须照样成功 —— 线上曾因为这里抛异常 100% 更新失败。
+ */
+describe("performUpdate 非 JSON 制品", () => {
+	it("main.js / styles.css 的 json 为 null 时仍然更新成功", async () => {
+		const files: Record<string, string> = {};
+		const adapter = {
+			write: async (p: string, d: string) => {
+				files[p] = d;
+			},
+			read: async (p: string) => files[p] ?? "",
+			exists: async (p: string) => p in files,
+			remove: async (p: string) => {
+				delete files[p];
+			},
+			stat: async (p: string) =>
+				p in files ? { size: files[p].length } : null,
+		};
+		const bigJs = "/*\nGENERATED\n*/\n" + "x".repeat(2000);
+		const updater = new PluginUpdater(
+			{
+				requestText: async (url: string) => {
+					if (url.endsWith("version.json"))
+						return {
+							status: 200,
+							text: '{"version":"9.9.9"}',
+							json: { version: "9.9.9" },
+						};
+					if (url.endsWith("manifest.json"))
+						return {
+							status: 200,
+							text: '{"id":"china-speedup","version":"9.9.9"}',
+							json: { id: "china-speedup", version: "9.9.9" },
+						};
+					// 非 JSON 正文：json 只能是 null
+					if (url.endsWith("main.js"))
+						return { status: 200, text: bigJs, json: null };
+					return { status: 200, text: ".x{}", json: null };
+				},
+				adapter,
+				basesProvider: async () => ["https://relay-1.x"],
+				now: () => 1_000_000,
+			},
+			".obsidian/plugins/china-speedup",
+			"0.1.2"
+		);
+		const check = await updater.checkForUpdate(true);
+		expect(check.hasUpdate).toBe(true);
+		const res = await updater.performUpdate();
+		expect(res.error).toBeUndefined();
+		expect(res.success).toBe(true);
+		expect(files[".obsidian/plugins/china-speedup/main.js"]).toBe(bigJs);
+		expect(files[".obsidian/plugins/china-speedup/manifest.json"]).toContain(
+			"9.9.9"
+		);
+		// 临时文件清理干净
+		expect(
+			Object.keys(files).some((k) => k.endsWith(".update-temp"))
+		).toBe(false);
+	});
+});
+
 describe("isNewerVersion", () => {
 	it("基本比较", () => {
 		expect(isNewerVersion("1.0.1", "1.0.0")).toBe(true);

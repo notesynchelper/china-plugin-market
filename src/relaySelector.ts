@@ -12,10 +12,15 @@ import { requestUrl } from "obsidian";
 import { log, logError } from "./logger";
 import type { RelayNode } from "./types";
 
-/** bootstrap 候选：拉到 marketplace-config 之前用它探测、取配置 */
+/**
+ * bootstrap 候选：拉到 marketplace-config 之前用它探测、取配置。
+ * ⚠️ 只放**确实部署了 /plugin-market 与 /gh 的节点**。relay-2 一直在这个列表里，
+ * 但它根本没部署这两段（全 404），只会把「所有 base 都失败」的错误染成 404，
+ * 2026-08-04 起移除；CF 备线 gh.clipfx.app 顶上（服务端 marketplace-config 同步改）。
+ */
 export const BOOTSTRAP_RELAYS: readonly RelayNode[] = [
 	{ id: "relay-1", base: "https://relay-1.bijitongbu.site" },
-	{ id: "relay-2", base: "https://relay-2.bijitongbu.site" },
+	{ id: "cf", base: "https://gh.clipfx.app" },
 ] as const;
 
 export const PROBE_PATH = "/plugin-market/health";

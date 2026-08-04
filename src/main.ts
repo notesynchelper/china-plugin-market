@@ -3,7 +3,6 @@ import {
 	Notice,
 	Plugin,
 	WorkspaceLeaf,
-	requestUrl,
 	type ObsidianProtocolData,
 } from "obsidian";
 
@@ -31,6 +30,7 @@ import {
 	type InstallContext,
 	type PluginsApi,
 } from "./installer";
+import { fetchText } from "./obsidianNet";
 import { runDeeplink } from "./deeplink";
 import { confirmDialog } from "./confirmModal";
 import { MarketView, MARKET_VIEW_TYPE } from "./marketView";
@@ -163,7 +163,7 @@ export default class PluginMarketPlugin extends Plugin {
 		return {
 			net: {
 				async getText(url: string) {
-					const r = await requestUrl({ url, method: "GET" });
+					const r = await fetchText(url);
 					return { status: r.status, text: r.text };
 				},
 			},
@@ -238,10 +238,9 @@ export default class PluginMarketPlugin extends Plugin {
 		const adapter = this.app.vault.adapter;
 		return new PluginUpdater(
 			{
-				requestText: async (url: string) => {
-					const r = await requestUrl({ url, method: "GET" });
-					return { status: r.status, text: r.text, json: r.json };
-				},
+				// ⚠️ 必须走 fetchText：直接读 requestUrl 的 r.json 会在 main.js
+				// 这种非 JSON 正文上抛异常，自更新曾因此 100% 失败
+				requestText: (url: string) => fetchText(url),
 				adapter: {
 					write: (p, d) => adapter.write(p, d),
 					read: (p) => adapter.read(p),
