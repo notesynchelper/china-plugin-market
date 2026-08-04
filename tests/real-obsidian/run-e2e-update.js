@@ -149,9 +149,9 @@ function cmpVer(a, b) {
 }
 
 /**
- * 取线上 HEAD manifest。relay 偶发会返回一份非法 JSON 的 schema 变体
- * （2026-08-04 实测 dataview 就有），所以要多试几次 / 换线路 —— 这正是插件侧
- * 「坏 JSON 就换下一条线路」逻辑存在的原因。
+ * 取线上 HEAD manifest；失败/坏 JSON 就换下一条线路重试（与插件侧同策略）。
+ * 注：本机用 curl 手工核对 JSON 时要 `-o 文件` 再读，直接看 stdout 会被 rtk
+ * 压成「字段类型表」，看上去像服务端返回了非法 JSON（实际不是）。
  */
 async function fetchHeadManifest(repo) {
 	for (let attempt = 0; attempt < 6; attempt++) {

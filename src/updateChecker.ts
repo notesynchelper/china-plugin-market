@@ -77,8 +77,8 @@ export const latestVersionUrls = (
  * 更不得当成「可更新」）。
  *
  * `stopWhenNewerThan` 给了就是「够用即止」：某条线路已经报出比它新的版本就直接返回；
- * 否则**继续问完其余线路取最大值** —— 首条线路的 HEAD 缓存可能滞后，只信它会把
- * 「其实有新版」误判成「已是最新」（codex 2026-08-04）。
+ * 否则**继续问完其余线路取最大值**（上限 MAX_CONFIRM_BASES）—— 各线路的 HEAD 缓存
+ * 各自过期，只信首条会把「其实有新版」误判成「已是最新」（codex 2026-08-04）。
  */
 export const fetchLatestVersion = async (
 	entry: MarketEntry,
