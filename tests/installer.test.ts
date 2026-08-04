@@ -194,6 +194,128 @@ describe("installEntry special 直链模式", () => {
 	});
 });
 
+describe("installEntry 跨 base 重试", () => {
+	const BASE2 = "https://gh.clipfx.app";
+	const repoEntry: MarketEntry = {
+		id: "foo",
+		name: "Foo",
+		author: "a",
+		description: "d",
+		source: "official",
+		repo: "owner/foo",
+	};
+	/** base1 的 /gh/release 全 504（github.com 被阻断的真实形态），base2 正常 */
+	const netWithBrokenRelease = (calls: string[]) => ({
+		getText: async (url: string) => {
+			calls.push(url);
+			if (url.startsWith(BASE) && url.includes("/gh/release/")) {
+				return { status: 504, text: "" };
+			}
+			const table: Record<string, { status: number; text: string }> = {
+				[rawHeadManifestUrl(BASE, "owner/foo")]: {
+					status: 200,
+					text: JSON.stringify({ id: "foo", version: "1.2.3" }),
+				},
+				[rawHeadManifestUrl(BASE2, "owner/foo")]: {
+					status: 200,
+					text: JSON.stringify({ id: "foo", version: "1.2.3" }),
+				},
+				[releaseAssetUrl(BASE2, "owner/foo", "1.2.3", "manifest.json")]: {
+					status: 200,
+					text: JSON.stringify({ id: "foo", version: "1.2.3" }),
+				},
+				[releaseAssetUrl(BASE2, "owner/foo", "1.2.3", "main.js")]: {
+					status: 200,
+					text: bigJs,
+				},
+			};
+			return table[url] ?? { status: 404, text: "" };
+		},
+	});
+
+	it("首选 base 的 release 504 时自动落到下一条线路", async () => {
+		const calls: string[] = [];
+		const fs = makeFs();
+		const plugins = makePlugins();
+		const ctx: InstallContext = {
+			net: netWithBrokenRelease(calls),
+			fs,
+			plugins,
+			configDir: ".obsidian",
+		};
+		const version = await installEntry(repoEntry, [BASE, BASE2], ctx);
+		expect(version).toBe("1.2.3");
+		expect(calls.some((u) => u.startsWith(BASE) && u.includes("/gh/release/"))).toBe(
+			true
+		);
+		expect(fs.files.get(`${pluginFolder(".obsidian", "foo")}/main.js`)).toBe(bigJs);
+		expect(plugins.enabled).toEqual(["foo"]);
+	});
+
+	it("所有线路都挂时抛最后一个错误", async () => {
+		const ctx: InstallContext = {
+			net: makeNet({}),
+			fs: makeFs(),
+			plugins: makePlugins(),
+			configDir: ".obsidian",
+		};
+		await expect(installEntry(repoEntry, [BASE, BASE2], ctx)).rejects.toThrow(
+			/HTTP 404/
+		);
+	});
+
+	it("id 不匹配是硬失败，不再试其它线路", async () => {
+		const calls: string[] = [];
+		const net = {
+			getText: async (url: string) => {
+				calls.push(url);
+				if (url.endsWith("/HEAD/manifest.json"))
+					return { status: 200, text: JSON.stringify({ id: "foo", version: "1.0.0" }) };
+				if (url.includes("/gh/release/") && url.endsWith("manifest.json"))
+					return { status: 200, text: JSON.stringify({ id: "EVIL", version: "1.0.0" }) };
+				return { status: 200, text: bigJs };
+			},
+		};
+		const ctx: InstallContext = {
+			net,
+			fs: makeFs(),
+			plugins: makePlugins(),
+			configDir: ".obsidian",
+		};
+		await expect(installEntry(repoEntry, [BASE, BASE2], ctx)).rejects.toThrow(
+			/id 不匹配/
+		);
+		expect(calls.some((u) => u.startsWith(BASE2))).toBe(false);
+	});
+
+	it("special 直链与 base 无关，只试一次", async () => {
+		const calls: string[] = [];
+		const net = {
+			getText: async (url: string) => {
+				calls.push(url);
+				return { status: 500, text: "" };
+			},
+		};
+		const entry: MarketEntry = {
+			id: "sp",
+			name: "Special",
+			author: "team",
+			description: "d",
+			source: "special",
+			manifestUrl: "https://relay-1.bijitongbu.site/p/manifest.json",
+			assetBase: "https://relay-1.bijitongbu.site/p/",
+		};
+		const ctx: InstallContext = {
+			net,
+			fs: makeFs(),
+			plugins: makePlugins(),
+			configDir: ".obsidian",
+		};
+		await expect(installEntry(entry, [BASE, BASE2], ctx)).rejects.toThrow(/HTTP 500/);
+		expect(calls).toEqual(["https://relay-1.bijitongbu.site/p/manifest.json"]);
+	});
+});
+
 describe("getInstalledState", () => {
 	it("反映 manifests / enabledPlugins", () => {
 		const plugins = makePlugins();

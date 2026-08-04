@@ -21,10 +21,13 @@ import {
 	selectFastestBase,
 	peekRelayCache,
 	clearRelayCache,
+	notifyRequestFailure,
+	notifyRequestSuccess,
 } from "./relaySelector";
 import {
 	installEntry,
 	getInstalledState,
+	AllBasesFailedError,
 	type InstallContext,
 	type PluginsApi,
 } from "./installer";
@@ -181,13 +184,20 @@ export default class PluginMarketPlugin extends Plugin {
 	async installMarketEntry(entry: MarketEntry): Promise<void> {
 		const notice = new Notice(`正在安装「${entry.name}」…`, 0);
 		try {
-			const base = await this.getFastestBase();
-			const version = await installEntry(entry, base, this.buildInstallContext());
+			// 传整条「最快优先 + 其余候选」列表：某条线路的 /gh/release 挂了
+			// （relay 到 github.com 被阻断时会 502/504）自动落到下一条，含 CF 备线
+			const bases = await this.getOrderedBases();
+			this.settings.lastFastestBase = bases[0] ?? "";
+			const version = await installEntry(entry, bases, this.buildInstallContext());
+			notifyRequestSuccess();
 			notice.setMessage(`「${entry.name}」安装成功 v${version}`);
 			window.setTimeout(() => notice.hide(), 4000);
 			this.getMarketView()?.refresh();
 		} catch (e) {
 			logError("安装失败:", e);
+			// 只有「所有线路都下载失败」才算线路问题；id 不匹配 / 写盘失败
+			// 与线路无关，不该推高失败计数去清测速缓存
+			if (e instanceof AllBasesFailedError) notifyRequestFailure();
 			notice.setMessage(
 				`「${entry.name}」安装失败：${e instanceof Error ? e.message : e}`
 			);
