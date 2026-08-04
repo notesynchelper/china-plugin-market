@@ -45,17 +45,17 @@ function screenshot(display, outPath, w = 1400, h = 900) {
 
 function buildVault(vaultDir) {
 	const dot = path.join(vaultDir, '.obsidian');
-	fs.mkdirSync(path.join(dot, 'plugins', 'plugin-market-cn'), { recursive: true });
+	fs.mkdirSync(path.join(dot, 'plugins', 'china-speedup'), { recursive: true });
 	fs.mkdirSync(path.join(dot, 'plugins', 'qa-bridge'), { recursive: true });
 
 	for (const f of ['main.js', 'manifest.json', 'styles.css']) {
 		const src = path.join(REPO, f);
-		if (fs.existsSync(src)) fs.copyFileSync(src, path.join(dot, 'plugins', 'plugin-market-cn', f));
+		if (fs.existsSync(src)) fs.copyFileSync(src, path.join(dot, 'plugins', 'china-speedup', f));
 	}
 	for (const f of ['main.js', 'manifest.json']) {
 		fs.copyFileSync(path.join(BRIDGE_DIR, f), path.join(dot, 'plugins', 'qa-bridge', f));
 	}
-	fs.writeFileSync(path.join(dot, 'community-plugins.json'), JSON.stringify(['plugin-market-cn', 'qa-bridge']));
+	fs.writeFileSync(path.join(dot, 'community-plugins.json'), JSON.stringify(['china-speedup', 'qa-bridge']));
 	fs.writeFileSync(path.join(dot, 'core-plugins.json'), JSON.stringify([]));
 	fs.writeFileSync(path.join(dot, 'app.json'), JSON.stringify({ legacyEditor: false }));
 	fs.writeFileSync(path.join(vaultDir, 'Welcome.md'), '# 插件加速商店 E2E\n');
@@ -138,7 +138,7 @@ async function main() {
 		if (ready.timedOut) throw new Error('插件/命令未注册: ' + JSON.stringify(ready));
 
 		// 1) 打开商店（拉线上 relay-1 清单）
-		await trigger(vaultDir, { command: 'plugin-market-cn:open-plugin-market' });
+		await trigger(vaultDir, { command: 'china-speedup:open-plugin-market' });
 		console.log('[e2e] store opened; 等待清单加载（线上 relay-1）...');
 		await sleep(14000); // community-plugins.json ~5-14s + 渲染
 		screenshot(display, path.join(outDir, 'shot-01-store.png'), W, H);
@@ -163,8 +163,8 @@ async function main() {
 			action: 'eval',
 			timeoutMs: 90000,
 			code: `
-				const p = app.plugins.plugins['plugin-market-cn'];
-				if (!p) return { error: 'plugin-market-cn 未加载' };
+				const p = app.plugins.plugins['china-speedup'];
+				if (!p) return { error: 'china-speedup 未加载' };
 				await p.installById('dataview');
 				const v = app.workspace.getLeavesOfType('plugin-market-cn-view')[0]?.view;
 				if (v) v.locate('dataview');

@@ -118,7 +118,7 @@ export default class PluginMarketPlugin extends Plugin {
 			leaf = workspace.getLeaf("tab");
 			await leaf.setViewState({ type: MARKET_VIEW_TYPE, active: true });
 		}
-		if (leaf) workspace.revealLeaf(leaf);
+		await workspace.revealLeaf(leaf);
 	}
 
 	private getMarketView(): MarketView | null {
@@ -184,14 +184,14 @@ export default class PluginMarketPlugin extends Plugin {
 			const base = await this.getFastestBase();
 			const version = await installEntry(entry, base, this.buildInstallContext());
 			notice.setMessage(`「${entry.name}」安装成功 v${version}`);
-			setTimeout(() => notice.hide(), 4000);
+			window.setTimeout(() => notice.hide(), 4000);
 			this.getMarketView()?.refresh();
 		} catch (e) {
 			logError("安装失败:", e);
 			notice.setMessage(
 				`「${entry.name}」安装失败：${e instanceof Error ? e.message : e}`
 			);
-			setTimeout(() => notice.hide(), 6000);
+			window.setTimeout(() => notice.hide(), 6000);
 		}
 	}
 
@@ -212,7 +212,7 @@ export default class PluginMarketPlugin extends Plugin {
 
 	// ---------- 调起链接 ----------
 	private async handleProtocol(params: ObsidianProtocolData): Promise<void> {
-		await runDeeplink(params as Record<string, string>, {
+		await runDeeplink(params, {
 			enabled: this.settings.enableDeeplink,
 			openView: () => this.activateView(),
 			locate: (id) => this.getMarketView()?.locate(id),

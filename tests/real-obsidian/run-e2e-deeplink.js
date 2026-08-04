@@ -47,16 +47,16 @@ function screenshot(display, outPath, w = 1400, h = 900) {
 
 function buildVault(vaultDir) {
 	const dot = path.join(vaultDir, '.obsidian');
-	fs.mkdirSync(path.join(dot, 'plugins', 'plugin-market-cn'), { recursive: true });
+	fs.mkdirSync(path.join(dot, 'plugins', 'china-speedup'), { recursive: true });
 	fs.mkdirSync(path.join(dot, 'plugins', 'qa-bridge'), { recursive: true });
 	for (const f of ['main.js', 'manifest.json', 'styles.css']) {
 		const src = path.join(REPO, f);
-		if (fs.existsSync(src)) fs.copyFileSync(src, path.join(dot, 'plugins', 'plugin-market-cn', f));
+		if (fs.existsSync(src)) fs.copyFileSync(src, path.join(dot, 'plugins', 'china-speedup', f));
 	}
 	for (const f of ['main.js', 'manifest.json']) {
 		fs.copyFileSync(path.join(BRIDGE_DIR, f), path.join(dot, 'plugins', 'qa-bridge', f));
 	}
-	fs.writeFileSync(path.join(dot, 'community-plugins.json'), JSON.stringify(['plugin-market-cn', 'qa-bridge']));
+	fs.writeFileSync(path.join(dot, 'community-plugins.json'), JSON.stringify(['china-speedup', 'qa-bridge']));
 	fs.writeFileSync(path.join(dot, 'core-plugins.json'), JSON.stringify([]));
 	fs.writeFileSync(path.join(dot, 'app.json'), JSON.stringify({ legacyEditor: false }));
 	fs.writeFileSync(path.join(vaultDir, 'Welcome.md'), '# 调起链接 E2E\n');

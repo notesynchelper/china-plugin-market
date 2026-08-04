@@ -93,6 +93,9 @@ export const mergeCatalog = (
 ): MarketEntry[] => {
 	const blacklist = new Set(config.blacklist || []);
 	const pinned = new Set(config.pinned || []);
+	// 用 own keys 建集合：`id in deprecation` 会把 constructor/toString
+	// 这类原型链继承属性误判成「已弃用」
+	const deprecated = new Set(Object.keys(deprecation || {}));
 	const byId = new Map<string, MarketEntry>();
 
 	for (const p of official) {
@@ -106,7 +109,7 @@ export const mergeCatalog = (
 			repo: p.repo,
 			source: "official",
 			downloads: stats[p.id]?.downloads,
-			deprecated: Object.prototype.hasOwnProperty.call(deprecation, p.id),
+			deprecated: deprecated.has(p.id),
 			pinned: pinned.has(p.id),
 		});
 	}
@@ -194,7 +197,9 @@ export class Registry {
 			}
 		}
 		notifyRequestFailure();
-		throw lastErr || new Error("all bases failed for " + path);
+		throw lastErr instanceof Error
+			? lastErr
+			: new Error("all bases failed for " + path);
 	}
 
 	private async fetchConfig(

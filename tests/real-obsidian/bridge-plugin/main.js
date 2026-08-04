@@ -15,8 +15,8 @@ const RESULT_FILE = 'qa-result.json';
 const READY_FILE = 'qa-bridge-ready.json';
 const POLL_MS = 300;
 
-const REQUIRED_PLUGIN_IDS = ['plugin-market-cn'];
-const REQUIRED_COMMAND_IDS = ['plugin-market-cn:open-plugin-market'];
+const REQUIRED_PLUGIN_IDS = ['china-speedup'];
+const REQUIRED_COMMAND_IDS = ['china-speedup:open-plugin-market'];
 
 function resolveVaultBasePath(adapter) {
 	if (!adapter) return null;

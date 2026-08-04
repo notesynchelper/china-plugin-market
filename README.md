@@ -43,6 +43,9 @@ relay-1..5 (nginx)
 ```bash
 npm install
 npm run typecheck   # tsc --noEmit
+npm run lint        # eslint（与 Obsidian 官方插件审查同款 eslint-plugin-obsidianmd）
 npm test            # jest
 npm run build       # 产出 main.js
 ```
+
+要求 Obsidian ≥ 1.7.2（`manifest.json#minAppVersion`）。

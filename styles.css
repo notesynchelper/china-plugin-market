@@ -1,5 +1,15 @@
 /* 插件加速商店 — 商店视图样式（仿 Obsidian 原生社区插件浏览器） */
 
+/* 设置页：自定义清单地址非法（非白名单/非 https）时的提示态。
+   选择器要带 input[type="text"]，否则特异性低于 Obsidian 自带的
+   `input[type='text']` 规则，红框根本不显示。 */
+input[type="text"].pmcn-input-invalid,
+input[type="text"].pmcn-input-invalid:hover,
+input[type="text"].pmcn-input-invalid:focus,
+input[type="text"].pmcn-input-invalid:active {
+	border-color: var(--color-red);
+}
+
 .pmcn-view {
 	padding: 0 16px 16px;
 	overflow-y: auto;

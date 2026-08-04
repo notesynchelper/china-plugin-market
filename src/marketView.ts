@@ -213,12 +213,19 @@ export class MarketView extends ItemView {
 			btn.setText("安装");
 			btn.addClass("mod-cta");
 		}
-		btn.addEventListener("click", async () => {
-			btn.disabled = true;
-			btn.setText("安装中…");
-			await this.plugin.installMarketEntry(entry);
-			btn.disabled = false;
-			this.renderList();
+		btn.addEventListener("click", () => {
+			void this.handleInstallClick(btn, entry);
 		});
+	}
+
+	private async handleInstallClick(
+		btn: HTMLButtonElement,
+		entry: MarketEntry
+	): Promise<void> {
+		btn.disabled = true;
+		btn.setText("安装中…");
+		await this.plugin.installMarketEntry(entry);
+		btn.disabled = false;
+		this.renderList();
 	}
 }

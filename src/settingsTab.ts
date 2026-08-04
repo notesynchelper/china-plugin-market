@@ -13,7 +13,6 @@ export class PluginMarketSettingTab extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
-		containerEl.createEl("h2", { text: "插件加速商店" });
 
 		// 加速线路（不显示具体节点）+ 重新测速
 		new Setting(containerEl)
@@ -22,10 +21,12 @@ export class PluginMarketSettingTab extends PluginSettingTab {
 			.addButton((btn) =>
 				btn.setButtonText("重新测速").onClick(async () => {
 					btn.setDisabled(true);
-					await this.plugin.reprobeNodes();
-					new Notice("已重新测速，已切换到最快线路");
-					btn.setDisabled(false);
-					this.display();
+					try {
+						await this.plugin.reprobeNodes();
+						new Notice("已重新测速，已切换到最快线路");
+					} finally {
+						btn.setDisabled(false);
+					}
 				})
 			);
 
@@ -45,7 +46,7 @@ export class PluginMarketSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("启用调起链接")
 			.setDesc(
-				"允许官网（产品自有白名单域）通过 obsidian://plugin-market-cn 链接打开商店 / 安装插件"
+				"允许官网（产品自有白名单域）通过调起链接打开商店 / 安装插件"
 			)
 			.addToggle((t) =>
 				t.setValue(this.plugin.settings.enableDeeplink).onChange(async (v) => {
@@ -80,12 +81,12 @@ export class PluginMarketSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.customConfigUrl)
 					.onChange(async (v) => {
 						const val = v.trim();
-						if (val && !isAllowedUrl(val)) {
-							// 不阻止输入，但提示；保存时仍写入，registry 侧会再次校验并忽略非法值
-							txt.inputEl.style.borderColor = "var(--color-red)";
-						} else {
-							txt.inputEl.style.borderColor = "";
-						}
+						// 不阻止输入，只做视觉提示；保存时仍写入，
+						// registry 侧会再次校验并忽略非法值
+						txt.inputEl.toggleClass(
+							"pmcn-input-invalid",
+							!!val && !isAllowedUrl(val)
+						);
 						this.plugin.settings.customConfigUrl = val;
 						this.plugin.registry.invalidate();
 						await this.plugin.saveSettings();

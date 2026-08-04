@@ -74,7 +74,9 @@ export class PluginUpdater {
 				lastErr = e;
 			}
 		}
-		throw lastErr || new Error("all bases failed for " + file);
+		throw lastErr instanceof Error
+			? lastErr
+			: new Error("all bases failed for " + file);
 	}
 
 	async checkForUpdate(forceCheck = false): Promise<UpdateCheckResult> {

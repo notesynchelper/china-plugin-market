@@ -106,18 +106,18 @@ const defaultDeps: RelaySelectorDeps = {
 
 const withTimeout = <T>(p: Promise<T>, ms: number): Promise<T> =>
 	new Promise<T>((resolve, reject) => {
-		const timer = setTimeout(
+		const timer = window.setTimeout(
 			() => reject(new Error(`probe timeout ${ms}ms`)),
 			ms
 		);
 		p.then(
 			(v) => {
-				clearTimeout(timer);
+				window.clearTimeout(timer);
 				resolve(v);
 			},
-			(e) => {
-				clearTimeout(timer);
-				reject(e);
+			(e: unknown) => {
+				window.clearTimeout(timer);
+				reject(e instanceof Error ? e : new Error(String(e)));
 			}
 		);
 	});
